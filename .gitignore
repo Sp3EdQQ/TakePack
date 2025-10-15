@@ -1,0 +1,28 @@
+# Flutter/Dart/Pub
+.dart_tool/
+.packages
+pubspec.lock
+build/
+/.idea/
+.vscode/
+**/GeneratedPluginRegistrant.*
+
+# Android
+*.iml
+.gradle/
+/.gradle/
+local.properties
+/.idea/
+android/.gradle
+
+# iOS
+Pods/
+.symlinks/
+xcuserdata/
+Runner.xcworkspace
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Misc
+*.log
+*.tmp
