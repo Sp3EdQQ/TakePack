@@ -29,6 +29,9 @@ class _MapPageState extends State<MapPage> {
   List<LatLng>? _routeToFirstPoint;
   bool _loadingRoutes = false;
 
+  // Route info for the info bar
+  RouteInfo? _routeInfoToFirst;
+
   @override
   void initState() {
     super.initState();
@@ -55,7 +58,8 @@ class _MapPageState extends State<MapPage> {
         LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
         deliveryWaypoints.first,
       ];
-      _routeToFirstPoint = await _routingService.getRoute(userToFirst);
+      _routeInfoToFirst = await _routingService.getRouteInfo(userToFirst);
+      _routeToFirstPoint = _routeInfoToFirst?.coordinates;
     }
 
     if (mounted) setState(() => _loadingRoutes = false);
@@ -69,9 +73,12 @@ class _MapPageState extends State<MapPage> {
       LatLng(p.latitude, p.longitude),
       LatLng(points.first.lat, points.first.lng),
     ];
-    final route = await _routingService.getRoute(userToFirst);
+    final routeInfo = await _routingService.getRouteInfo(userToFirst);
     if (mounted) {
-      setState(() => _routeToFirstPoint = route);
+      setState(() {
+        _routeInfoToFirst = routeInfo;
+        _routeToFirstPoint = routeInfo.coordinates;
+      });
     }
   }
 
@@ -137,6 +144,54 @@ class _MapPageState extends State<MapPage> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Później'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _centerOnUserLocation() {
+    if (_currentPosition != null) {
+      _mapController.move(
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        16.0,
+      );
+    }
+  }
+
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white70, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -239,32 +294,144 @@ class _MapPageState extends State<MapPage> {
                   MarkerLayer(markers: markers),
                 ],
               ),
+              // Modern info bar at the top
+              if (_routeInfoToFirst != null && points.isNotEmpty)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade700, Colors.blue.shade500],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.location_on,
+                                color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                points.first.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildInfoItem(
+                                icon: Icons.straighten,
+                                label: 'Dystans',
+                                value: _routeInfoToFirst!.distanceFormatted,
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 40,
+                              color: Colors.white.withOpacity(0.3),
+                            ),
+                            Expanded(
+                              child: _buildInfoItem(
+                                icon: Icons.access_time,
+                                label: 'Czas',
+                                value: _routeInfoToFirst!.durationFormatted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               // Show loading indicator while fetching routes
               if (_loadingRoutes)
                 Positioned(
-                  top: 16,
+                  bottom: 90,
                   right: 16,
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: [
-                        BoxShadow(color: Colors.black26, blurRadius: 4)
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2))
                       ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
                         SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
                         ),
-                        SizedBox(width: 8),
-                        Text('Loading route...',
-                            style: TextStyle(fontSize: 12)),
+                        SizedBox(width: 10),
+                        Text('Ładowanie trasy...',
+                            style: TextStyle(fontSize: 13)),
                       ],
+                    ),
+                  ),
+                ),
+              // Center on user location button
+              if (_currentPosition != null)
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(16),
+                    shadowColor: Colors.black.withOpacity(0.3),
+                    child: InkWell(
+                      onTap: _centerOnUserLocation,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.blue.shade600,
+                              Colors.blue.shade400
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.my_location,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
                     ),
                   ),
                 ),
