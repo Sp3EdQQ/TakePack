@@ -33,6 +33,8 @@ class ApiService {
           id: '2', name: 'Stop A', lat: 52.2300, lng: 21.0150, order: 1),
       DeliveryPoint(
           id: '3', name: 'Stop B', lat: 52.2310, lng: 21.0180, order: 2),
+      DeliveryPoint(
+          id: '4', name: 'End', lat: 52.2320, lng: 21.0200, order: 3),
     ];
   }
 }
