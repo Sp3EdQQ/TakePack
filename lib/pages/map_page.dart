@@ -6,6 +6,7 @@ import '../models/delivery_point.dart';
 import '../services/api_service.dart';
 import '../services/routing_service.dart';
 import '../services/location_service.dart';
+import '../services/route_optimizer.dart';
 import '../widgets/route_info_bar.dart';
 import '../widgets/loading_indicator.dart';
 import '../widgets/center_location_button.dart';
@@ -27,16 +28,19 @@ class _MapPageState extends State<MapPage> {
   final RoutingService _routingService = RoutingService();
   final LocationService _locationService = LocationService();
   final ProximityManager _proximityManager = ProximityManager();
+  late final RouteOptimizer _routeOptimizer;
 
   // State
   List<LatLng>? _routeBetweenPoints;
   List<LatLng>? _routeToFirstPoint;
   RouteInfo? _routeInfoToFirst;
   bool _loadingRoutes = false;
+  List<DeliveryPoint> _optimizedPoints = [];
 
   @override
   void initState() {
     super.initState();
+    _routeOptimizer = RouteOptimizer(_routingService);
     _pointsFuture = widget.apiService.fetchPoints();
     _initLocation();
     _loadRoutes();
@@ -66,13 +70,25 @@ class _MapPageState extends State<MapPage> {
       return;
     }
 
-    // Fetch route between delivery points
-    final deliveryWaypoints = points.map((p) => LatLng(p.lat, p.lng)).toList();
+    // Get current position or use first point as start
+    final currentPos = _locationService.currentPosition;
+    final startPosition = currentPos != null
+        ? LatLng(currentPos.latitude, currentPos.longitude)
+        : LatLng(points.first.lat, points.first.lng);
+
+    // Optimize route order using nearest neighbor algorithm
+    _optimizedPoints = await _routeOptimizer.optimizeRoute(
+      points: points,
+      startPosition: startPosition,
+    );
+
+    // Fetch route between optimized delivery points
+    final deliveryWaypoints =
+        _optimizedPoints.map((p) => LatLng(p.lat, p.lng)).toList();
     _routeBetweenPoints = await _routingService.getRoute(deliveryWaypoints);
 
-    // Fetch route from user location to first point (if available)
-    final currentPos = _locationService.currentPosition;
-    if (currentPos != null) {
+    // Fetch route from user location to first optimized point
+    if (currentPos != null && _optimizedPoints.isNotEmpty) {
       final userToFirst = [
         LatLng(currentPos.latitude, currentPos.longitude),
         deliveryWaypoints.first,
@@ -86,12 +102,19 @@ class _MapPageState extends State<MapPage> {
 
   /// Update route to first delivery point when user moves
   Future<void> _updateRouteToFirstPoint(Position position) async {
-    final points = await _pointsFuture;
-    if (points.isEmpty) return;
+    // Use optimized points if available
+    if (_optimizedPoints.isEmpty) {
+      final points = await _pointsFuture;
+      if (points.isEmpty) return;
+    }
+
+    final firstPoint = _optimizedPoints.isNotEmpty
+        ? _optimizedPoints.first
+        : (await _pointsFuture).first;
 
     final userToFirst = [
       LatLng(position.latitude, position.longitude),
-      LatLng(points.first.lat, points.first.lng),
+      LatLng(firstPoint.lat, firstPoint.lng),
     ];
     final routeInfo = await _routingService.getRouteInfo(userToFirst);
     if (mounted) {
@@ -143,12 +166,16 @@ class _MapPageState extends State<MapPage> {
             return const Center(child: Text('No points'));
           }
 
+          // Use optimized points if available, otherwise use original order
+          final displayPoints =
+              _optimizedPoints.isNotEmpty ? _optimizedPoints : points;
+
           final currentPosition = _locationService.currentPosition;
           final polylinePoints =
-              points.map((p) => LatLng(p.lat, p.lng)).toList();
+              displayPoints.map((p) => LatLng(p.lat, p.lng)).toList();
 
-          // Create markers using MapUtils
-          final markers = MapUtils.createDeliveryMarkers(points);
+          // Create markers using MapUtils (show optimized order)
+          final markers = MapUtils.createDeliveryMarkers(displayPoints);
           final userMarker = MapUtils.createUserMarker(currentPosition);
           if (userMarker != null) {
             markers.add(userMarker);
@@ -187,13 +214,13 @@ class _MapPageState extends State<MapPage> {
               ),
 
               // Info bar at the top
-              if (_routeInfoToFirst != null && points.isNotEmpty)
+              if (_routeInfoToFirst != null && displayPoints.isNotEmpty)
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
                   child: RouteInfoBar(
-                    firstPoint: points.first,
+                    firstPoint: displayPoints.first,
                     routeInfo: _routeInfoToFirst!,
                   ),
                 ),

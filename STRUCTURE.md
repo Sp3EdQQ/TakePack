@@ -14,7 +14,8 @@ lib/
 ├── services/                    # Logika biznesowa i API
 │   ├── api_service.dart        # REST API dla punktów dostawy
 │   ├── routing_service.dart    # OSRM API dla tras drogowych
-│   └── location_service.dart   # Zarządzanie lokalizacją GPS
+│   ├── location_service.dart   # Zarządzanie lokalizacją GPS
+│   └── route_optimizer.dart    # Optymalizacja kolejności punktów (TSP)
 ├── widgets/                     # Komponenty UI wielokrotnego użytku
 │   ├── route_info_bar.dart     # Pasek informacyjny (dystans, czas)
 │   ├── loading_indicator.dart  # Wskaźnik ładowania
@@ -41,6 +42,11 @@ lib/
 - Pobiera trasy rzeczywiste (nie proste linie)
 - Zwraca `RouteInfo` z dystansem i czasem
 
+**RouteOptimizer** - Optymalizacja kolejności punktów
+- Algorytm Nearest Neighbor (najbliższy sąsiad)
+- Znajduje najkrótszą trasę (problem TSP)
+- Zwraca punkty w optymalnej kolejności
+
 **LocationService** - Zarządzanie GPS
 - Obsługa uprawnień lokalizacji
 - Stream pozycji z filtrem 5m
@@ -64,7 +70,7 @@ lib/
 ### Utils (`utils/`)
 
 **MapUtils** - Funkcje pomocnicze mapy
-- `createDeliveryMarkers()` - czerwone markery punktów
+- `createDeliveryMarkers()` - czerwone markery z numerami kolejności
 - `createUserMarker()` - niebieski marker użytkownika
 - `createPolylines()` - linie tras (niebieska, zielona)
 - `getMapCenter()` - oblicza środek mapy

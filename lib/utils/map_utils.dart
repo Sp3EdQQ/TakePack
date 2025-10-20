@@ -6,20 +6,43 @@ import '../models/delivery_point.dart';
 
 /// Utility functions for map operations
 class MapUtils {
-  /// Create delivery point markers
+  /// Create delivery point markers with order numbers
   static List<Marker> createDeliveryMarkers(List<DeliveryPoint> points) {
-    return points
-        .map((p) => Marker(
-              width: 40,
-              height: 40,
-              point: LatLng(p.lat, p.lng),
-              child: const Icon(
-                Icons.location_on,
-                color: Colors.red,
-                size: 36,
+    return points.asMap().entries.map((entry) {
+      final index = entry.key;
+      final point = entry.value;
+
+      return Marker(
+        width: 50,
+        height: 50,
+        point: LatLng(point.lat, point.lng),
+        child: Stack(
+          children: [
+            const Icon(
+              Icons.location_on,
+              color: Colors.red,
+              size: 40,
+            ),
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Container(
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ))
-        .toList();
+            ),
+          ],
+        ),
+      );
+    }).toList();
   }
 
   /// Create user location marker
